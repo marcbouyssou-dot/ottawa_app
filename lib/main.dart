@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 void main() {
   runApp(const OttawaApp());
@@ -10,293 +15,543 @@ class OttawaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Score Ottawa',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF2563EB),
         scaffoldBackgroundColor: const Color(0xFFF4F7FB),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2563EB),
+        ),
       ),
-      home: const OttawaHomePage(),
+      home: const OttawaPage(),
     );
   }
 }
 
-class OttawaHomePage extends StatefulWidget {
-  const OttawaHomePage({super.key});
+class OttawaPage extends StatefulWidget {
+  const OttawaPage({super.key});
 
   @override
-  State<OttawaHomePage> createState() => _OttawaHomePageState();
+  State<OttawaPage> createState() => _OttawaPageState();
 }
 
-class _OttawaHomePageState extends State<OttawaHomePage> {
-  bool painMalleolaire = false;
-  bool douleurTibia = false;
-  bool douleurFibula = false;
+class _OttawaPageState extends State<OttawaPage> {
+  bool douleurMalleolaire = false;
+  bool douleurMalleoleMediale = false;
+  bool douleurMalleoleLaterale = false;
 
-  bool painMedioPied = false;
-  bool douleurBase5 = false;
+  bool douleurMedioPied = false;
+  bool douleurCinquiemeMeta = false;
   bool douleurNaviculaire = false;
 
   bool appuiImpossible = false;
+  bool consentementPdf = false;
 
-  bool get radioCheville =>
-      painMalleolaire && (douleurTibia || douleurFibula || appuiImpossible);
+  bool get radioCheville {
+    return douleurMalleolaire &&
+        (douleurMalleoleMediale ||
+            douleurMalleoleLaterale ||
+            appuiImpossible);
+  }
 
-  bool get radioPied =>
-      painMedioPied && (douleurBase5 || douleurNaviculaire || appuiImpossible);
+  bool get radioPied {
+    return douleurMedioPied &&
+        (douleurCinquiemeMeta || douleurNaviculaire || appuiImpossible);
+  }
 
-  bool get radioIndiquee => radioCheville || radioPied;
+  bool get imagerieIndiquee {
+    return radioCheville || radioPied;
+  }
 
-  void reset() {
+  int get totalOui {
+    return [
+      douleurMalleolaire,
+      douleurMalleoleMediale,
+      douleurMalleoleLaterale,
+      douleurMedioPied,
+      douleurCinquiemeMeta,
+      douleurNaviculaire,
+      appuiImpossible,
+    ].where((element) => element).length;
+  }
+
+  void reinitialiser() {
     setState(() {
-      painMalleolaire = false;
-      douleurTibia = false;
-      douleurFibula = false;
-      painMedioPied = false;
-      douleurBase5 = false;
+      douleurMalleolaire = false;
+      douleurMalleoleMediale = false;
+      douleurMalleoleLaterale = false;
+      douleurMedioPied = false;
+      douleurCinquiemeMeta = false;
       douleurNaviculaire = false;
       appuiImpossible = false;
+      consentementPdf = false;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final resultColor = radioIndiquee ? Colors.red : Colors.green;
+  Future<void> exporterPdf() async {
+    if (!consentementPdf) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Merci de cocher le consentement avant export PDF.'),
+        ),
+      );
+      return;
+    }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Score d’Ottawa'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _HeaderCard(),
+    final pdfData = await creerPdf();
 
-            const SizedBox(height: 16),
+    await Printing.sharePdf(
+      bytes: pdfData,
+      filename: 'score_ottawa.pdf',
+    );
+  }
 
-            _SectionCard(
-              title: 'Cheville',
-              subtitle: 'Zone malléolaire',
-              children: [
-                _SwitchLine(
-                  title: 'Douleur dans la zone malléolaire',
-                  value: painMalleolaire,
-                  onChanged: (v) => setState(() => painMalleolaire = v),
-                ),
-                _SwitchLine(
-                  title:
-                      'Douleur osseuse bord postérieur/tip malléole médiale',
-                  value: douleurTibia,
-                  onChanged: (v) => setState(() => douleurTibia = v),
-                ),
-                _SwitchLine(
-                  title:
-                      'Douleur osseuse bord postérieur/tip malléole latérale',
-                  value: douleurFibula,
-                  onChanged: (v) => setState(() => douleurFibula = v),
-                ),
-              ],
-            ),
+  Future<Uint8List> creerPdf() async {
+    final document = pw.Document();
+    final date = DateTime.now();
 
-            const SizedBox(height: 16),
+    String ouiNon(bool value) {
+      return value ? 'Oui' : 'Non';
+    }
 
-            _SectionCard(
-              title: 'Pied',
-              subtitle: 'Médio-pied',
-              children: [
-                _SwitchLine(
-                  title: 'Douleur dans la zone du médio-pied',
-                  value: painMedioPied,
-                  onChanged: (v) => setState(() => painMedioPied = v),
-                ),
-                _SwitchLine(
-                  title: 'Douleur osseuse à la base du 5e métatarsien',
-                  value: douleurBase5,
-                  onChanged: (v) => setState(() => douleurBase5 = v),
-                ),
-                _SwitchLine(
-                  title: 'Douleur osseuse au naviculaire',
-                  value: douleurNaviculaire,
-                  onChanged: (v) => setState(() => douleurNaviculaire = v),
-                ),
-              ],
-            ),
+    final resultat = imagerieIndiquee
+        ? 'Imagerie potentiellement indiquée'
+        : 'Critères d’Ottawa négatifs';
 
-            const SizedBox(height: 16),
+    final detail = imagerieIndiquee
+        ? '${radioCheville ? 'Radiographie de cheville à discuter.\n' : ''}${radioPied ? 'Radiographie du pied à discuter.' : ''}'
+        : 'Aucun critère positif retrouvé. La nécessité d’imagerie paraît faible selon les règles d’Ottawa.';
 
-            _SectionCard(
-              title: 'Appui',
-              subtitle: 'Marche après traumatisme',
-              children: [
-                _SwitchLine(
-                  title:
-                      'Impossible de faire 4 pas immédiatement ET à l’examen',
-                  value: appuiImpossible,
-                  onChanged: (v) => setState(() => appuiImpossible = v),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: resultColor.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: resultColor.withOpacity(0.35)),
+    document.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        build: (context) {
+          return [
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                color: PdfColor.fromHex('#2563EB'),
+                borderRadius: pw.BorderRadius.circular(12),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    radioIndiquee
-                        ? 'Imagerie potentiellement indiquée'
-                        : 'Critères d’Ottawa négatifs',
-                    style: TextStyle(
+                  pw.Text(
+                    'Score d’Ottawa - Cheville / Pied',
+                    style: pw.TextStyle(
+                      color: PdfColors.white,
                       fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: resultColor.shade700,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    radioIndiquee
-                        ? '${radioCheville ? "• Radio de cheville à discuter\n" : ""}${radioPied ? "• Radio du pied à discuter\n" : ""}'
-                        : 'Aucun critère positif retrouvé. La nécessité d’imagerie paraît faible selon les règles d’Ottawa.',
-                    style: const TextStyle(fontSize: 16, height: 1.4),
+                  pw.SizedBox(height: 6),
+                  pw.Text(
+                    'Aide à la pertinence de l’imagerie après traumatisme.',
+                    style: const pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            ElevatedButton.icon(
-              onPressed: reset,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Nouveau bilan'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Date : ${date.day}/${date.month}/${date.year} - ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
+            ),
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Critères évalués',
+              style: pw.TextStyle(
+                fontSize: 16,
+                fontWeight: pw.FontWeight.bold,
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              'Application destinée aux professionnels de santé. '
-              'Outil d’aide à la décision ne remplaçant pas l’examen clinique, '
+            pw.SizedBox(height: 8),
+            pw.Text(
+              'Douleur dans la zone malléolaire : ${ouiNon(douleurMalleolaire)}',
+            ),
+            pw.Text(
+              'Douleur osseuse malléole médiale : ${ouiNon(douleurMalleoleMediale)}',
+            ),
+            pw.Text(
+              'Douleur osseuse malléole latérale : ${ouiNon(douleurMalleoleLaterale)}',
+            ),
+            pw.Text(
+              'Douleur dans la zone du médio-pied : ${ouiNon(douleurMedioPied)}',
+            ),
+            pw.Text(
+              'Douleur base du 5e métatarsien : ${ouiNon(douleurCinquiemeMeta)}',
+            ),
+            pw.Text(
+              'Douleur osseuse au naviculaire : ${ouiNon(douleurNaviculaire)}',
+            ),
+            pw.Text(
+              'Impossible de faire 4 pas : ${ouiNon(appuiImpossible)}',
+            ),
+            pw.SizedBox(height: 18),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(14),
+              decoration: pw.BoxDecoration(
+                color: imagerieIndiquee
+                    ? PdfColor.fromHex('#FEE2E2')
+                    : PdfColor.fromHex('#DCFCE7'),
+                borderRadius: pw.BorderRadius.circular(10),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    resultat,
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(detail),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+            pw.Text(
+              'Consentement et RGPD',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Le patient a été informé de la génération de ce PDF. '
+              'Cette application ne stocke aucune donnée patient. '
+              'Le PDF généré devient un document de santé et doit être géré selon les règles professionnelles applicables.',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
+            pw.SizedBox(height: 12),
+            pw.Text(
+              'Mention de prudence',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            ),
+            pw.Text(
+              'Outil d’aide à la décision. Ne remplace pas l’examen clinique, '
               'le jugement professionnel ni les recommandations locales. '
-              'Ne pas utiliser comme diagnostic médical automatisé.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 13),
+              'Ne constitue pas un diagnostic médical automatisé.',
+              style: const pw.TextStyle(fontSize: 10),
             ),
-
-            const SizedBox(height: 10),
-
-            const Text(
-              'Aucune donnée patient n’est stockée dans cette version.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black45, fontSize: 12),
-            ),
-          ],
-        ),
+          ];
+        },
       ),
     );
-  }
-}
 
-class _HeaderCard extends StatelessWidget {
+    return document.save();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1D4ED8), Color(0xFF38BDF8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
+    final Color resultatCouleur =
+        imagerieIndiquee ? const Color(0xFFDC2626) : const Color(0xFF16A34A);
+
+    final String resultatTitre = imagerieIndiquee
+        ? 'Imagerie potentiellement indiquée'
+        : 'Critères d’Ottawa négatifs';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Score Ottawa'),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF2563EB),
+        foregroundColor: Colors.white,
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Score d’Ottawa',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF2563EB),
+                  Color(0xFF06B6D4),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Règles d’Ottawa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Aide à décider si une radiographie est pertinente après traumatisme de cheville ou du pied.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'Aide à la pertinence de l’imagerie après traumatisme de cheville ou du pied.',
-            style: TextStyle(color: Colors.white, fontSize: 16, height: 1.35),
+          const SizedBox(height: 16),
+          _InfoCard(
+            title: 'Progression',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinearProgressIndicator(
+                  value: totalOui / 7,
+                  minHeight: 8,
+                  backgroundColor: const Color(0xFFE2E8F0),
+                  color: const Color(0xFF2563EB),
+                ),
+                const SizedBox(height: 8),
+                Text('$totalOui critère(s) sélectionné(s) sur 7'),
+              ],
+            ),
           ),
+          const SizedBox(height: 16),
+          _InfoCard(
+            title: 'Cheville',
+            child: Column(
+              children: [
+                _QuestionSwitch(
+                  title: 'Douleur dans la zone malléolaire',
+                  subtitle: 'Douleur autour des malléoles interne ou externe.',
+                  value: douleurMalleolaire,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurMalleolaire = value;
+                    });
+                  },
+                ),
+                _QuestionSwitch(
+                  title: 'Douleur osseuse malléole médiale',
+                  subtitle:
+                      'Douleur sur le bord postérieur du tibia distal ou à la pointe de la malléole interne.',
+                  value: douleurMalleoleMediale,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurMalleoleMediale = value;
+                    });
+                  },
+                ),
+                _QuestionSwitch(
+                  title: 'Douleur osseuse malléole latérale',
+                  subtitle:
+                      'Douleur sur le bord postérieur de la fibula distale ou à la pointe de la malléole externe.',
+                  value: douleurMalleoleLaterale,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurMalleoleLaterale = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _InfoCard(
+            title: 'Pied',
+            child: Column(
+              children: [
+                _QuestionSwitch(
+                  title: 'Douleur dans la zone du médio-pied',
+                  subtitle: 'Douleur au niveau de la partie centrale du pied.',
+                  value: douleurMedioPied,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurMedioPied = value;
+                    });
+                  },
+                ),
+                _QuestionSwitch(
+                  title: 'Douleur base du 5e métatarsien',
+                  subtitle: 'Douleur osseuse sur le bord externe du pied.',
+                  value: douleurCinquiemeMeta,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurCinquiemeMeta = value;
+                    });
+                  },
+                ),
+                _QuestionSwitch(
+                  title: 'Douleur osseuse au naviculaire',
+                  subtitle: 'Douleur osseuse sur la partie interne du médio-pied.',
+                  value: douleurNaviculaire,
+                  onChanged: (value) {
+                    setState(() {
+                      douleurNaviculaire = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _InfoCard(
+            title: 'Appui',
+            child: _QuestionSwitch(
+              title: 'Impossible de faire 4 pas',
+              subtitle:
+                  'Immédiatement après le traumatisme et lors de l’examen.',
+              value: appuiImpossible,
+              onChanged: (value) {
+                setState(() {
+                  appuiImpossible = value;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: imagerieIndiquee
+                  ? const Color(0xFFFFE4E6)
+                  : const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: resultatCouleur),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  resultatTitre,
+                  style: TextStyle(
+                    color: resultatCouleur,
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  imagerieIndiquee
+                      ? '${radioCheville ? '• Radio de cheville à discuter\n' : ''}${radioPied ? '• Radio du pied à discuter' : ''}'
+                      : 'Aucun critère positif retrouvé. La nécessité d’imagerie paraît faible selon les règles d’Ottawa.',
+                  style: const TextStyle(fontSize: 15, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _InfoCard(
+            title: 'Consentement RGPD',
+            child: CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: consentementPdf,
+              onChanged: (value) {
+                setState(() {
+                  consentementPdf = value ?? false;
+                });
+              },
+              title: const Text(
+                'Le patient est informé de la génération du PDF.',
+              ),
+              subtitle: const Text(
+                'Aucune donnée nominative n’est saisie ni stockée dans cette version.',
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: reinitialiser,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: exporterPdf,
+                  icon: const Icon(Icons.picture_as_pdf),
+                  label: const Text('Exporter PDF'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Outil d’aide à la décision. Ne remplace pas l’examen clinique, '
+            'le jugement professionnel ni les recommandations locales. '
+            'Ne constitue pas un diagnostic médical automatisé.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Mode hors connexion : aucun appel réseau, aucun stockage patient.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black45, fontSize: 12),
+          ),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
+class _InfoCard extends StatelessWidget {
   final String title;
-  final String subtitle;
-  final List<Widget> children;
+  final Widget child;
 
-  const _SectionCard({
+  const _InfoCard({
     required this.title,
-    required this.subtitle,
-    required this.children,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Color(0x11000000),
             blurRadius: 18,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text(subtitle, style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 12),
-          ...children,
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
         ],
       ),
     );
   }
 }
 
-class _SwitchLine extends StatelessWidget {
+class _QuestionSwitch extends StatelessWidget {
   final String title;
+  final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const _SwitchLine({
+  const _QuestionSwitch({
     required this.title,
+    required this.subtitle,
     required this.value,
     required this.onChanged,
   });
@@ -305,9 +560,14 @@ class _SwitchLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(title, style: const TextStyle(fontSize: 15.5)),
       value: value,
       onChanged: onChanged,
+      activeColor: const Color(0xFF2563EB),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      subtitle: Text(subtitle),
     );
   }
 }
