@@ -108,142 +108,189 @@ class _OttawaPageState extends State<OttawaPage> {
   }
 
   Future<Uint8List> creerPdf() async {
-    final document = pw.Document();
-    final date = DateTime.now();
+  final document = pw.Document();
+  final date = DateTime.now();
 
-    String ouiNon(bool value) {
-      return value ? 'Oui' : 'Non';
-    }
-
-    final resultat = imagerieIndiquee
-        ? 'Imagerie potentiellement indiquée'
-        : 'Critères d’Ottawa négatifs';
-
-    final detail = imagerieIndiquee
-        ? '${radioCheville ? 'Radiographie de cheville à discuter.\n' : ''}${radioPied ? 'Radiographie du pied à discuter.' : ''}'
-        : 'Aucun critère positif retrouvé. La nécessité d’imagerie paraît faible selon les règles d’Ottawa.';
-
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(28),
-        build: (context) {
-          return [
-            pw.Container(
-              padding: const pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#2563EB'),
-                borderRadius: pw.BorderRadius.circular(12),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Score d’Ottawa - Cheville / Pied',
-                    style: pw.TextStyle(
-                      color: PdfColors.white,
-                      fontSize: 22,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 6),
-                  pw.Text(
-                    'Aide à la pertinence de l’imagerie après traumatisme.',
-                    style: const pw.TextStyle(
-                      color: PdfColors.white,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 18),
-            pw.Text(
-              'Date : ${date.day}/${date.month}/${date.year} - ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
-            ),
-            pw.SizedBox(height: 18),
-            pw.Text(
-              'Critères évalués',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              'Douleur dans la zone malléolaire : ${ouiNon(douleurMalleolaire)}',
-            ),
-            pw.Text(
-              'Douleur osseuse malléole médiale : ${ouiNon(douleurMalleoleMediale)}',
-            ),
-            pw.Text(
-              'Douleur osseuse malléole latérale : ${ouiNon(douleurMalleoleLaterale)}',
-            ),
-            pw.Text(
-              'Douleur dans la zone du médio-pied : ${ouiNon(douleurMedioPied)}',
-            ),
-            pw.Text(
-              'Douleur base du 5e métatarsien : ${ouiNon(douleurCinquiemeMeta)}',
-            ),
-            pw.Text(
-              'Douleur osseuse au naviculaire : ${ouiNon(douleurNaviculaire)}',
-            ),
-            pw.Text(
-              'Impossible de faire 4 pas : ${ouiNon(appuiImpossible)}',
-            ),
-            pw.SizedBox(height: 18),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(14),
-              decoration: pw.BoxDecoration(
-                color: imagerieIndiquee
-                    ? PdfColor.fromHex('#FEE2E2')
-                    : PdfColor.fromHex('#DCFCE7'),
-                borderRadius: pw.BorderRadius.circular(10),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    resultat,
-                    style: pw.TextStyle(
-                      fontSize: 18,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Text(detail),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 20),
-            pw.Text(
-              'Consentement et RGPD',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text(
-              'Le patient a été informé de la génération de ce PDF. '
-              'Cette application ne stocke aucune donnée patient. '
-              'Le PDF généré devient un document de santé et doit être géré selon les règles professionnelles applicables.',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-            pw.SizedBox(height: 12),
-            pw.Text(
-              'Mention de prudence',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-            pw.Text(
-              'Outil d’aide à la décision. Ne remplace pas l’examen clinique, '
-              'le jugement professionnel ni les recommandations locales. '
-              'Ne constitue pas un diagnostic médical automatisé.',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-          ];
-        },
-      ),
-    );
-
-    return document.save();
+  String ouiNon(bool value) {
+    return value ? 'Oui' : 'Non';
   }
+
+  final resultat = imagerieIndiquee
+      ? 'Imagerie potentiellement indiquee'
+      : "Criteres d'Ottawa negatifs";
+
+  final detail = imagerieIndiquee
+      ? '${radioCheville ? '- Radiographie de cheville a discuter.\n' : ''}${radioPied ? '- Radiographie du pied a discuter.' : ''}'
+      : "Aucun critere positif retrouve. La necessite d'imagerie parait faible selon les regles d'Ottawa.";
+
+  document.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      footer: (context) {
+        return pw.Container(
+          margin: const pw.EdgeInsets.only(top: 20),
+          padding: const pw.EdgeInsets.only(top: 10),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+              top: pw.BorderSide(color: PdfColors.grey300),
+            ),
+          ),
+          child: pw.Column(
+            children: [
+              pw.Text(
+                "Score Ottawa - Outil d'aide a la decision clinique",
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.grey700,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                "© 2026 MB - Tous droits reserves",
+                style: const pw.TextStyle(
+                  fontSize: 8,
+                  color: PdfColors.grey600,
+                ),
+              ),
+              pw.SizedBox(height: 2),
+              pw.Text(
+                "Ne constitue pas un diagnostic medical automatise.",
+                style: const pw.TextStyle(
+                  fontSize: 8,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      build: (context) {
+        return [
+          pw.Container(
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromHex('#2563EB'),
+              borderRadius: pw.BorderRadius.circular(16),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Score Ottawa - Cheville / Pied',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  "Aide a la pertinence de l'imagerie apres traumatisme.",
+                  style: const pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Date : ${date.day}/${date.month}/${date.year} - ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
+            style: const pw.TextStyle(
+              fontSize: 11,
+              color: PdfColors.grey700,
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          pw.Text(
+            'Criteres evalues',
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          pw.Text('- Douleur dans la zone malleolaire : ${ouiNon(douleurMalleolaire)}'),
+          pw.Text('- Douleur osseuse malleole mediale : ${ouiNon(douleurMalleoleMediale)}'),
+          pw.Text('- Douleur osseuse malleole laterale : ${ouiNon(douleurMalleoleLaterale)}'),
+          pw.Text('- Douleur dans la zone du medio-pied : ${ouiNon(douleurMedioPied)}'),
+          pw.Text('- Douleur base du 5e metatarsien : ${ouiNon(douleurCinquiemeMeta)}'),
+          pw.Text('- Douleur osseuse au naviculaire : ${ouiNon(douleurNaviculaire)}'),
+          pw.Text('- Impossible de faire 4 pas : ${ouiNon(appuiImpossible)}'),
+          pw.SizedBox(height: 24),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(18),
+            decoration: pw.BoxDecoration(
+              color: imagerieIndiquee
+                  ? PdfColor.fromHex('#FEE2E2')
+                  : PdfColor.fromHex('#DCFCE7'),
+              borderRadius: pw.BorderRadius.circular(14),
+              border: pw.Border.all(
+                color: imagerieIndiquee
+                    ? PdfColor.fromHex('#DC2626')
+                    : PdfColor.fromHex('#16A34A'),
+              ),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  resultat,
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                    color: imagerieIndiquee
+                        ? PdfColor.fromHex('#991B1B')
+                        : PdfColor.fromHex('#166534'),
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  detail,
+                  style: const pw.TextStyle(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 28),
+          pw.Text(
+            'Consentement et RGPD',
+            style: pw.TextStyle(
+              fontSize: 15,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            "Le patient a ete informe de la generation de ce document PDF. "
+            "Cette application ne stocke aucune donnee nominative ni donnee de sante dans cette version. "
+            "Le document exporte devient un document de sante relevant des regles professionnelles applicables.",
+            style: const pw.TextStyle(fontSize: 11),
+          ),
+          pw.SizedBox(height: 18),
+          pw.Text(
+            'Mention de prudence',
+            style: pw.TextStyle(
+              fontSize: 15,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            "Outil d'aide a la decision clinique. "
+            "Ne remplace pas l'examen clinique, le jugement professionnel ni les recommandations locales. "
+            "Ne constitue pas un diagnostic medical automatise.",
+            style: const pw.TextStyle(fontSize: 11),
+          ),
+        ];
+      },
+    ),
+  );
+
+  return document.save();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -479,20 +526,26 @@ class _OttawaPageState extends State<OttawaPage> {
             ],
           ),
           const SizedBox(height: 18),
-          const Text(
-            'Outil d’aide à la décision. Ne remplace pas l’examen clinique, '
-            'le jugement professionnel ni les recommandations locales. '
-            'Ne constitue pas un diagnostic médical automatisé.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Mode hors connexion : aucun appel réseau, aucun stockage patient.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black45, fontSize: 12),
-          ),
-          const SizedBox(height: 30),
+const Text(
+  "Outil d'aide a la decision. Ne remplace pas l'examen clinique, "
+  "le jugement professionnel ni les recommandations locales. "
+  "Ne constitue pas un diagnostic medical automatise.",
+  textAlign: TextAlign.center,
+  style: TextStyle(color: Colors.black54, fontSize: 12),
+),
+const SizedBox(height: 8),
+const Text(
+  "Mode hors connexion : aucun appel reseau, aucun stockage patient.",
+  textAlign: TextAlign.center,
+  style: TextStyle(color: Colors.black45, fontSize: 12),
+),
+const SizedBox(height: 8),
+const Text(
+  "© 2026 MB - Tous droits reserves",
+  textAlign: TextAlign.center,
+  style: TextStyle(color: Colors.black45, fontSize: 11),
+),
+const SizedBox(height: 30),
         ],
       ),
     );
